@@ -1,4 +1,4 @@
-# Claude Code Rules
+﻿# Claude Code Rules
 
 This file is generated during init for the selected agent.
 
@@ -208,3 +208,158 @@ Wait for consent; never auto-create ADRs. Group related decisions (stacks, authe
 
 ## Code Standards
 See `.specify/memory/constitution.md` for code quality, testing, performance, security, and architecture principles.
+
+---
+
+## Project-Specific Context: KIro Todo Application
+
+### Project Overview
+**Objective:** Transform a console todo app into a modern multi-user web application with persistent storage using Claude Code and Spec-Kit Plus.
+
+**Development Approach:** Agentic Dev Stack workflow - No manual coding allowed.
+1. Write specification
+2. Generate architectural plan
+3. Break into tasks
+4. Implement via Claude Code agents
+
+### Technology Stack
+
+| Layer | Technology |
+|-------|-----------|
+| Frontend | Next.js 16+ (App Router) |
+| Backend | Python FastAPI |
+| ORM | SQLModel |
+| Database | Neon Serverless PostgreSQL |
+| Authentication | Better Auth |
+| Spec-Driven | Claude Code + Spec-Kit Plus |
+
+### Agent Delegation Rules
+
+**IMPORTANT:** Use specialized agents for domain-specific work. Never implement features directly when an agent is available.
+
+#### When to Use Each Agent
+
+1. **auth-skill** - Use for ALL authentication-related work:
+   - User signup/signin implementation
+   - Better Auth configuration and integration
+   - JWT token generation and verification
+   - Password hashing and validation
+   - Session management
+   - Protected route middleware
+   - Authentication security reviews
+
+2. **frontend-skill** - Use for ALL Next.js frontend work:
+   - Page creation (App Router)
+   - React component development
+   - Client and Server Components
+   - Layout and UI structure
+   - Form handling and validation
+   - State management
+   - Responsive design
+   - Frontend API integration
+
+3. **database-skill** - Use for ALL database work:
+   - Schema design and entity modeling
+   - Table creation with SQLModel
+   - Database migrations
+   - Relationship definitions (one-to-many, many-to-many)
+   - Index optimization
+   - Data integrity constraints
+   - Neon PostgreSQL configuration
+
+4. **backend-skill** - Use for ALL FastAPI backend work:
+   - RESTful API endpoint creation
+   - Request/response handling
+   - Route organization and structure
+   - Business logic implementation
+   - Database query operations
+   - Error handling and validation
+   - API documentation
+
+### Authentication Architecture
+
+**Better Auth + JWT Token Flow:**
+
+1. **User Login:**
+   - User submits credentials on Frontend
+   - Better Auth validates and creates session
+   - Issues JWT token containing user information
+
+2. **API Request:**
+   - Frontend includes JWT in header: `Authorization: Bearer <token>`
+   - Backend extracts token from request header
+   - Backend verifies token signature using shared secret
+
+3. **User Identification:**
+   - Backend decodes JWT to extract user ID and email
+   - Matches user ID from token with user ID in request URL/body
+   - Ensures users can only access their own data
+
+4. **Data Filtering:**
+   - All database queries filter by authenticated user ID
+   - Returns only data belonging to the authenticated user
+   - Prevents unauthorized access to other users' data
+
+### Core Requirements
+
+**Basic Level Functionality:**
+- Implement all 5 Basic Level features as web application
+- Create RESTful API endpoints for all operations
+- Build responsive frontend interface
+- Store all data in Neon Serverless PostgreSQL
+- Implement user signup/signin with Better Auth
+- Ensure multi-user data isolation
+
+### Development Workflow
+
+1. **Specification Phase:**
+   - Use `/sp.specify` to create detailed feature specs
+   - Document requirements, acceptance criteria, and constraints
+
+2. **Planning Phase:**
+   - Use `/sp.plan` to generate architectural plan
+   - Identify which agents will handle which components
+   - Document API contracts and data models
+
+3. **Task Generation:**
+   - Use `/sp.tasks` to break plan into actionable tasks
+   - Assign tasks to appropriate agents (auth, frontend, database, backend)
+
+4. **Implementation Phase:**
+   - Use `/sp.implement` to execute tasks via specialized agents
+   - Agents work autonomously within their domain
+   - Review and iterate based on agent outputs
+
+### Agent Invocation Examples
+
+```
+# Authentication work
+"Implement user signup with Better Auth" → Use auth-skill
+
+# Frontend work
+"Create todo list page with Next.js" → Use frontend-skill
+
+# Database work
+"Design user and todo tables with relationships" → Use database-skill
+
+# Backend work
+"Create FastAPI endpoints for todo CRUD operations" → Use backend-skill
+```
+
+### Security Requirements
+
+- Never store plain-text passwords (use bcrypt/argon2)
+- Always use HTTPS for authentication requests
+- Store JWTs securely (httpOnly cookies preferred)
+- Implement token expiration and refresh
+- Add rate limiting to auth endpoints
+- Validate and sanitize all user inputs
+- Use environment variables for secrets
+- Implement proper CORS configuration
+
+### Data Isolation Requirements
+
+- Every database query MUST filter by authenticated user ID
+- API endpoints MUST verify token before data access
+- Users MUST NOT be able to access other users' data
+- All todo operations scoped to authenticated user

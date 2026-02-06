@@ -1,0 +1,738 @@
+# MCP Tool Specifications
+
+**Feature**: 003-chat-api-ui
+**Date**: 2026-02-04
+**Purpose**: Define schemas and contracts for all MCP tools used by the AI agent
+
+---
+
+## Tool Overview
+
+The AI agent has access to 6 MCP tools for task management operations. All tools:
+- Enforce user_id scoping (user can only access their own tasks)
+- Return structured results suitable for agent reasoning
+- Are stateless (no instance variables or caching)
+- Log all invocations for audit trail
+
+---
+
+## Tool 1: list_tasks
+
+**Purpose**: Retrieve all tasks for the authenticated user
+
+**Input Schema**:
+```json
+{
+  "type": "object",
+  "properties": {
+    "user_id": {
+      "type": "integer",
+      "description": "Authenticated user ID (injected by backend, not from agent)"
+    },
+    "filter": {
+      "type": "string",
+      "enum": ["all", "completed", "incomplete"],
+      "default": "all",
+      "description": "Filter tasks by completion status"
+    }
+  },
+  "required": ["user_id"]
+}
+```
+
+**Output Schema**:
+```json
+{
+  "type": "object",
+  "properties": {
+    "status": {
+      "type": "string",
+      "enum": ["success", "error"]
+    },
+    "tasks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "integer"},
+          "title": {"type": "string"},
+          "description": {"type": "string"},
+          "completed": {"type": "boolean"},
+          "created_at": {"type": "string", "format": "date-time"}
+        }
+      }
+    },
+    "count": {
+      "type": "integer",
+      "description": "Total number of tasks returned"
+    },
+    "message": {
+      "type": "string",
+      "description": "Human-readable result message"
+    }
+  },
+  "required": ["status", "tasks", "count"]
+}
+```
+
+**Example Invocation**:
+```json
+{
+  "tool_name": "list_tasks",
+  "arguments": {
+    "user_id": 123,
+    "filter": "incomplete"
+  }
+}
+```
+
+**Example Success Response**:
+```json
+{
+  "status": "success",
+  "tasks": [
+    {
+      "id": 1,
+      "title": "Buy groceries",
+      "description": "Milk, eggs, bread",
+      "completed": false,
+      "created_at": "2026-02-04T10:00:00Z"
+    },
+    {
+      "id": 2,
+      "title": "Call mom",
+      "description": "",
+      "completed": false,
+      "created_at": "2026-02-04T11:00:00Z"
+    }
+  ],
+  "count": 2,
+  "message": "Found 2 incomplete tasks"
+}
+```
+
+**Example Error Response**:
+```json
+{
+  "status": "error",
+  "tasks": [],
+  "count": 0,
+  "message": "Database connection failed. Please try again."
+}
+```
+
+**Agent Usage Guidance**:
+- Use this tool when user asks to see their tasks
+- Filter parameter helps narrow results (e.g., "show completed tasks")
+- Present tasks in a readable format to the user
+- If count is 0, inform user they have no tasks
+
+---
+
+## Tool 2: create_task
+
+**Purpose**: Create a new task for the authenticated user
+
+**Input Schema**:
+```json
+{
+  "type": "object",
+  "properties": {
+    "user_id": {
+      "type": "integer",
+      "description": "Authenticated user ID (injected by backend)"
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200,
+      "description": "Task title (required)"
+    },
+    "description": {
+      "type": "string",
+      "maxLength": 1000,
+      "default": "",
+      "description": "Task description (optional)"
+    }
+  },
+  "required": ["user_id", "title"]
+}
+```
+
+**Output Schema**:
+```json
+{
+  "type": "object",
+  "properties": {
+    "status": {
+      "type": "string",
+      "enum": ["success", "error"]
+    },
+    "task": {
+      "type": "object",
+      "properties": {
+        "id": {"type": "integer"},
+        "title": {"type": "string"},
+        "description": {"type": "string"},
+        "completed": {"type": "boolean"},
+        "created_at": {"type": "string", "format": "date-time"}
+      }
+    },
+    "message": {
+      "type": "string"
+    }
+  },
+  "required": ["status", "message"]
+}
+```
+
+**Example Invocation**:
+```json
+{
+  "tool_name": "create_task",
+  "arguments": {
+    "user_id": 123,
+    "title": "Buy groceries",
+    "description": "Milk, eggs, bread"
+  }
+}
+```
+
+**Example Success Response**:
+```json
+{
+  "status": "success",
+  "task": {
+    "id": 5,
+    "title": "Buy groceries",
+    "description": "Milk, eggs, bread",
+    "completed": false,
+    "created_at": "2026-02-04T14:30:00Z"
+  },
+  "message": "Task 'Buy groceries' created successfully"
+}
+```
+
+**Example Error Response**:
+```json
+{
+  "status": "error",
+  "message": "Task title must be between 1 and 200 characters"
+}
+```
+
+**Agent Usage Guidance**:
+- Use when user wants to add/create a new task
+- Extract title from user's message (e.g., "add task to buy groceries")
+- Include description if user provides additional details
+- Confirm creation with task details in response
+
+---
+
+## Tool 3: update_task
+
+**Purpose**: Update an existing task's title or description
+
+**Input Schema**:
+```json
+{
+  "type": "object",
+  "properties": {
+    "user_id": {
+      "type": "integer",
+      "description": "Authenticated user ID (injected by backend)"
+    },
+    "task_id": {
+      "type": "integer",
+      "description": "ID of task to update"
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200,
+      "description": "New task title (optional)"
+    },
+    "description": {
+      "type": "string",
+      "maxLength": 1000,
+      "description": "New task description (optional)"
+    }
+  },
+  "required": ["user_id", "task_id"]
+}
+```
+
+**Output Schema**:
+```json
+{
+  "type": "object",
+  "properties": {
+    "status": {
+      "type": "string",
+      "enum": ["success", "error"]
+    },
+    "task": {
+      "type": "object",
+      "properties": {
+        "id": {"type": "integer"},
+        "title": {"type": "string"},
+        "description": {"type": "string"},
+        "completed": {"type": "boolean"},
+        "created_at": {"type": "string", "format": "date-time"}
+      }
+    },
+    "message": {
+      "type": "string"
+    }
+  },
+  "required": ["status", "message"]
+}
+```
+
+**Example Invocation**:
+```json
+{
+  "tool_name": "update_task",
+  "arguments": {
+    "user_id": 123,
+    "task_id": 5,
+    "title": "Buy groceries and supplies"
+  }
+}
+```
+
+**Example Success Response**:
+```json
+{
+  "status": "success",
+  "task": {
+    "id": 5,
+    "title": "Buy groceries and supplies",
+    "description": "Milk, eggs, bread",
+    "completed": false,
+    "created_at": "2026-02-04T14:30:00Z"
+  },
+  "message": "Task updated successfully"
+}
+```
+
+**Example Error Response**:
+```json
+{
+  "status": "error",
+  "message": "Task not found or does not belong to user"
+}
+```
+
+**Agent Usage Guidance**:
+- Use when user wants to modify/edit/change a task
+- Require task_id (may need to list tasks first to find it)
+- Only update fields that user wants to change
+- Confirm update with new task details
+
+---
+
+## Tool 4: delete_task
+
+**Purpose**: Permanently delete a task
+
+**Input Schema**:
+```json
+{
+  "type": "object",
+  "properties": {
+    "user_id": {
+      "type": "integer",
+      "description": "Authenticated user ID (injected by backend)"
+    },
+    "task_id": {
+      "type": "integer",
+      "description": "ID of task to delete"
+    }
+  },
+  "required": ["user_id", "task_id"]
+}
+```
+
+**Output Schema**:
+```json
+{
+  "type": "object",
+  "properties": {
+    "status": {
+      "type": "string",
+      "enum": ["success", "error"]
+    },
+    "message": {
+      "type": "string"
+    }
+  },
+  "required": ["status", "message"]
+}
+```
+
+**Example Invocation**:
+```json
+{
+  "tool_name": "delete_task",
+  "arguments": {
+    "user_id": 123,
+    "task_id": 5
+  }
+}
+```
+
+**Example Success Response**:
+```json
+{
+  "status": "success",
+  "message": "Task 'Buy groceries' deleted successfully"
+}
+```
+
+**Example Error Response**:
+```json
+{
+  "status": "error",
+  "message": "Task not found or does not belong to user"
+}
+```
+
+**Agent Usage Guidance**:
+- Use when user wants to remove/delete a task
+- Consider asking for confirmation for destructive operations
+- Provide clear feedback about what was deleted
+- Handle "task not found" gracefully
+
+---
+
+## Tool 5: get_task
+
+**Purpose**: Retrieve details of a specific task by ID
+
+**Input Schema**:
+```json
+{
+  "type": "object",
+  "properties": {
+    "user_id": {
+      "type": "integer",
+      "description": "Authenticated user ID (injected by backend)"
+    },
+    "task_id": {
+      "type": "integer",
+      "description": "ID of task to retrieve"
+    }
+  },
+  "required": ["user_id", "task_id"]
+}
+```
+
+**Output Schema**:
+```json
+{
+  "type": "object",
+  "properties": {
+    "status": {
+      "type": "string",
+      "enum": ["success", "error"]
+    },
+    "task": {
+      "type": "object",
+      "properties": {
+        "id": {"type": "integer"},
+        "title": {"type": "string"},
+        "description": {"type": "string"},
+        "completed": {"type": "boolean"},
+        "created_at": {"type": "string", "format": "date-time"}
+      }
+    },
+    "message": {
+      "type": "string"
+    }
+  },
+  "required": ["status", "message"]
+}
+```
+
+**Example Invocation**:
+```json
+{
+  "tool_name": "get_task",
+  "arguments": {
+    "user_id": 123,
+    "task_id": 5
+  }
+}
+```
+
+**Example Success Response**:
+```json
+{
+  "status": "success",
+  "task": {
+    "id": 5,
+    "title": "Buy groceries",
+    "description": "Milk, eggs, bread",
+    "completed": false,
+    "created_at": "2026-02-04T14:30:00Z"
+  },
+  "message": "Task retrieved successfully"
+}
+```
+
+**Example Error Response**:
+```json
+{
+  "status": "error",
+  "message": "Task not found or does not belong to user"
+}
+```
+
+**Agent Usage Guidance**:
+- Use when user asks about a specific task
+- Useful for getting details before update/delete operations
+- Present task details clearly to user
+
+---
+
+## Tool 6: mark_complete
+
+**Purpose**: Toggle task completion status (complete ↔ incomplete)
+
+**Input Schema**:
+```json
+{
+  "type": "object",
+  "properties": {
+    "user_id": {
+      "type": "integer",
+      "description": "Authenticated user ID (injected by backend)"
+    },
+    "task_id": {
+      "type": "integer",
+      "description": "ID of task to toggle"
+    },
+    "completed": {
+      "type": "boolean",
+      "description": "New completion status (optional, defaults to toggle)"
+    }
+  },
+  "required": ["user_id", "task_id"]
+}
+```
+
+**Output Schema**:
+```json
+{
+  "type": "object",
+  "properties": {
+    "status": {
+      "type": "string",
+      "enum": ["success", "error"]
+    },
+    "task": {
+      "type": "object",
+      "properties": {
+        "id": {"type": "integer"},
+        "title": {"type": "string"},
+        "description": {"type": "string"},
+        "completed": {"type": "boolean"},
+        "created_at": {"type": "string", "format": "date-time"}
+      }
+    },
+    "message": {
+      "type": "string"
+    }
+  },
+  "required": ["status", "message"]
+}
+```
+
+**Example Invocation**:
+```json
+{
+  "tool_name": "mark_complete",
+  "arguments": {
+    "user_id": 123,
+    "task_id": 5,
+    "completed": true
+  }
+}
+```
+
+**Example Success Response**:
+```json
+{
+  "status": "success",
+  "task": {
+    "id": 5,
+    "title": "Buy groceries",
+    "description": "Milk, eggs, bread",
+    "completed": true,
+    "created_at": "2026-02-04T14:30:00Z"
+  },
+  "message": "Task 'Buy groceries' marked as complete"
+}
+```
+
+**Example Error Response**:
+```json
+{
+  "status": "error",
+  "message": "Task not found or does not belong to user"
+}
+```
+
+**Agent Usage Guidance**:
+- Use when user wants to complete/finish/check off a task
+- Can also mark as incomplete if user wants to reopen
+- Confirm the action with task title in response
+- If completed parameter omitted, toggle current status
+
+---
+
+## Tool Registration (Python MCP SDK)
+
+```python
+from mcp import MCPServer, tool
+from typing import Dict, Any, Optional
+
+mcp_server = MCPServer()
+
+@mcp_server.tool(
+    name="list_tasks",
+    description="List all tasks for the authenticated user with optional filtering"
+)
+async def list_tasks(
+    user_id: int,
+    filter: str = "all"
+) -> Dict[str, Any]:
+    """Implementation here"""
+    pass
+
+@mcp_server.tool(
+    name="create_task",
+    description="Create a new task with title and optional description"
+)
+async def create_task(
+    user_id: int,
+    title: str,
+    description: str = ""
+) -> Dict[str, Any]:
+    """Implementation here"""
+    pass
+
+@mcp_server.tool(
+    name="update_task",
+    description="Update an existing task's title or description"
+)
+async def update_task(
+    user_id: int,
+    task_id: int,
+    title: Optional[str] = None,
+    description: Optional[str] = None
+) -> Dict[str, Any]:
+    """Implementation here"""
+    pass
+
+@mcp_server.tool(
+    name="delete_task",
+    description="Permanently delete a task"
+)
+async def delete_task(
+    user_id: int,
+    task_id: int
+) -> Dict[str, Any]:
+    """Implementation here"""
+    pass
+
+@mcp_server.tool(
+    name="get_task",
+    description="Retrieve details of a specific task by ID"
+)
+async def get_task(
+    user_id: int,
+    task_id: int
+) -> Dict[str, Any]:
+    """Implementation here"""
+    pass
+
+@mcp_server.tool(
+    name="mark_complete",
+    description="Toggle task completion status or set to specific value"
+)
+async def mark_complete(
+    user_id: int,
+    task_id: int,
+    completed: Optional[bool] = None
+) -> Dict[str, Any]:
+    """Implementation here"""
+    pass
+
+# Export tools for agent
+def get_mcp_tools():
+    return mcp_server.get_tools()
+```
+
+---
+
+## Security Considerations
+
+### User ID Injection
+- `user_id` parameter is ALWAYS injected by backend from authenticated JWT
+- Agent NEVER provides user_id (prevents spoofing)
+- Tools validate user_id matches task ownership before operations
+
+### Input Validation
+- All string inputs validated for length constraints
+- Task IDs validated as positive integers
+- Enum values (filter, completed) validated against allowed values
+
+### Error Messages
+- Never expose internal details (database schema, stack traces)
+- Provide actionable guidance for users
+- Log detailed errors server-side for debugging
+
+### Audit Trail
+- All tool invocations logged to ToolCallLog table
+- Includes user_id, tool_name, arguments, result, timestamp
+- Enables compliance and debugging
+
+---
+
+## Testing Strategy
+
+### Unit Tests
+- Test each tool with valid inputs
+- Test validation rules (title length, task ownership)
+- Test error handling (task not found, database errors)
+
+### Integration Tests
+- Test tool invocation from agent
+- Test user_id scoping (user A cannot access user B's tasks)
+- Test concurrent tool calls
+
+### Agent Behavior Tests
+- Test agent selects correct tool for user intent
+- Test agent handles tool errors gracefully
+- Test agent confirms actions in natural language
+
+---
+
+## Performance Considerations
+
+### Tool Execution Time
+- Target: <100ms per tool call (P95)
+- Database queries optimized with indexes
+- No external API calls (all local database operations)
+
+### Concurrency
+- Tools are stateless and thread-safe
+- Multiple tools can execute concurrently
+- Database handles concurrent access via transactions
+
+### Caching (Future)
+- Consider caching list_tasks results (TTL: 30 seconds)
+- Invalidate cache on create/update/delete operations
+- Reduces database load for frequent list operations

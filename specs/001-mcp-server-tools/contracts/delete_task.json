@@ -1,0 +1,102 @@
+{
+  "tool_name": "delete_task",
+  "description": "Permanently delete a task",
+  "version": "1.0.0",
+  "input_schema": {
+    "type": "object",
+    "properties": {
+      "task_id": {
+        "type": "integer",
+        "description": "Unique task identifier",
+        "minimum": 1
+      }
+    },
+    "required": ["task_id"]
+  },
+  "output_schema": {
+    "type": "object",
+    "properties": {
+      "status": {
+        "type": "string",
+        "enum": ["success"]
+      },
+      "task": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "Deleted task identifier"
+          },
+          "title": {
+            "type": "string",
+            "description": "Deleted task title"
+          }
+        },
+        "required": ["id", "title"]
+      }
+    },
+    "required": ["status", "task"]
+  },
+  "error_schema": {
+    "type": "object",
+    "properties": {
+      "status": {
+        "type": "string",
+        "enum": ["error"]
+      },
+      "error": {
+        "type": "string",
+        "description": "User-friendly error message"
+      }
+    },
+    "required": ["status", "error"]
+  },
+  "examples": [
+    {
+      "name": "Delete task successfully",
+      "input": {
+        "task_id": 1
+      },
+      "output": {
+        "status": "success",
+        "task": {
+          "id": 1,
+          "title": "Buy groceries"
+        }
+      }
+    },
+    {
+      "name": "Error: Task not found",
+      "input": {
+        "task_id": 999
+      },
+      "output": {
+        "status": "error",
+        "error": "Task not found"
+      }
+    },
+    {
+      "name": "Error: Unauthorized access",
+      "input": {
+        "task_id": 5
+      },
+      "output": {
+        "status": "error",
+        "error": "Task not found"
+      },
+      "note": "Returns same error as not found to prevent information disclosure"
+    }
+  ],
+  "security": {
+    "user_scoping": "Only tasks belonging to authenticated user can be deleted",
+    "authorization": "Ownership validated via user_id filter in query"
+  },
+  "performance": {
+    "target_latency_ms": 100,
+    "typical_latency_ms": 50
+  },
+  "warnings": [
+    "Deletion is permanent and cannot be undone",
+    "No soft delete - task is immediately removed from database"
+  ]
+}

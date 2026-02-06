@@ -1,0 +1,163 @@
+{
+  "tool_name": "update_task",
+  "description": "Update task title and/or description",
+  "version": "1.0.0",
+  "input_schema": {
+    "type": "object",
+    "properties": {
+      "task_id": {
+        "type": "integer",
+        "description": "Unique task identifier",
+        "minimum": 1
+      },
+      "title": {
+        "type": "string",
+        "description": "New task title (optional)",
+        "minLength": 1,
+        "maxLength": 200
+      },
+      "description": {
+        "type": "string",
+        "description": "New task description (optional)",
+        "maxLength": 2000
+      }
+    },
+    "required": ["task_id"],
+    "minProperties": 2,
+    "note": "At least one of title or description must be provided"
+  },
+  "output_schema": {
+    "type": "object",
+    "properties": {
+      "status": {
+        "type": "string",
+        "enum": ["success"]
+      },
+      "task": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "Task identifier"
+          },
+          "title": {
+            "type": "string",
+            "description": "Updated task title"
+          },
+          "description": {
+            "type": ["string", "null"],
+            "description": "Updated task description"
+          },
+          "completed": {
+            "type": "boolean",
+            "description": "Completion status (unchanged)"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Updated timestamp (ISO 8601)"
+          }
+        },
+        "required": ["id", "title", "completed", "updated_at"]
+      }
+    },
+    "required": ["status", "task"]
+  },
+  "error_schema": {
+    "type": "object",
+    "properties": {
+      "status": {
+        "type": "string",
+        "enum": ["error"]
+      },
+      "error": {
+        "type": "string",
+        "description": "User-friendly error message"
+      }
+    },
+    "required": ["status", "error"]
+  },
+  "examples": [
+    {
+      "name": "Update title only",
+      "input": {
+        "task_id": 1,
+        "title": "Buy organic groceries"
+      },
+      "output": {
+        "status": "success",
+        "task": {
+          "id": 1,
+          "title": "Buy organic groceries",
+          "description": "Milk, eggs, bread",
+          "completed": false,
+          "updated_at": "2026-02-03T11:00:00Z"
+        }
+      }
+    },
+    {
+      "name": "Update description only",
+      "input": {
+        "task_id": 1,
+        "description": "Organic milk, free-range eggs, whole wheat bread"
+      },
+      "output": {
+        "status": "success",
+        "task": {
+          "id": 1,
+          "title": "Buy organic groceries",
+          "description": "Organic milk, free-range eggs, whole wheat bread",
+          "completed": false,
+          "updated_at": "2026-02-03T11:05:00Z"
+        }
+      }
+    },
+    {
+      "name": "Update both title and description",
+      "input": {
+        "task_id": 1,
+        "title": "Weekly grocery shopping",
+        "description": "Get everything for the week"
+      },
+      "output": {
+        "status": "success",
+        "task": {
+          "id": 1,
+          "title": "Weekly grocery shopping",
+          "description": "Get everything for the week",
+          "completed": false,
+          "updated_at": "2026-02-03T11:10:00Z"
+        }
+      }
+    },
+    {
+      "name": "Error: Task not found",
+      "input": {
+        "task_id": 999,
+        "title": "New title"
+      },
+      "output": {
+        "status": "error",
+        "error": "Task not found"
+      }
+    },
+    {
+      "name": "Error: No fields to update",
+      "input": {
+        "task_id": 1
+      },
+      "output": {
+        "status": "error",
+        "error": "At least one field (title or description) must be provided"
+      }
+    }
+  ],
+  "security": {
+    "user_scoping": "Only tasks belonging to authenticated user can be modified",
+    "authorization": "Ownership validated via user_id filter in query"
+  },
+  "performance": {
+    "target_latency_ms": 100,
+    "typical_latency_ms": 50
+  }
+}

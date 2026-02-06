@@ -1,0 +1,391 @@
+openapi: 3.0.3
+info:
+  title: Todo API - Task Management
+  description: RESTful API for managing user tasks with JWT authentication
+  version: 1.0.0
+  contact:
+    name: KIro Todo Team
+
+servers:
+  - url: http://localhost:8000
+    description: Local development server
+  - url: https://api.todo.example.com
+    description: Production server
+
+security:
+  - BearerAuth: []
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT token issued by Better Auth on frontend
+
+  schemas:
+    Task:
+      type: object
+      required:
+        - id
+        - title
+        - completed
+        - user_id
+        - created_at
+        - updated_at
+      properties:
+        id:
+          type: integer
+          example: 1
+          description: Unique task identifier
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+          example: "Buy groceries"
+          description: Task title (required)
+        description:
+          type: string
+          maxLength: 2000
+          nullable: true
+          example: "Milk, eggs, bread, and vegetables"
+          description: Optional detailed description
+        completed:
+          type: boolean
+          example: false
+          description: Whether task is marked as complete
+        user_id:
+          type: integer
+          example: 42
+          description: ID of user who owns this task
+        created_at:
+          type: string
+          format: date-time
+          example: "2026-02-02T10:30:00Z"
+          description: Timestamp when task was created
+        updated_at:
+          type: string
+          format: date-time
+          example: "2026-02-02T15:45:00Z"
+          description: Timestamp when task was last modified
+
+    TaskCreate:
+      type: object
+      required:
+        - title
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+          example: "Buy groceries"
+          description: Task title (required)
+        description:
+          type: string
+          maxLength: 2000
+          nullable: true
+          example: "Milk, eggs, bread, and vegetables"
+          description: Optional detailed description
+
+    TaskUpdate:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+          example: "Buy groceries and cook dinner"
+          description: Updated task title
+        description:
+          type: string
+          maxLength: 2000
+          nullable: true
+          example: "Updated shopping list"
+          description: Updated description
+        completed:
+          type: boolean
+          example: true
+          description: Updated completion status
+
+    Error:
+      type: object
+      required:
+        - error
+        - message
+      properties:
+        error:
+          type: string
+          example: "Task not found"
+          description: Error identifier
+        message:
+          type: string
+          example: "The requested task does not exist or you do not have permission to access it"
+          description: User-friendly error message
+        details:
+          type: object
+          nullable: true
+          description: Optional additional error details
+
+paths:
+  /api/tasks:
+    get:
+      summary: List all tasks for authenticated user
+      description: Returns all tasks owned by the authenticated user, ordered by creation date (newest first)
+      operationId: listTasks
+      tags:
+        - Tasks
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Successfully retrieved task list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Task'
+              example:
+                - id: 1
+                  title: "Buy groceries"
+                  description: "Milk, eggs, bread"
+                  completed: false
+                  user_id: 42
+                  created_at: "2026-02-02T10:30:00Z"
+                  updated_at: "2026-02-02T10:30:00Z"
+                - id: 2
+                  title: "Finish project"
+                  description: null
+                  completed: true
+                  user_id: 42
+                  created_at: "2026-02-01T14:20:00Z"
+                  updated_at: "2026-02-02T09:15:00Z"
+        '401':
+          description: Missing or invalid authentication token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: "Unauthorized"
+                message: "Authentication token is missing or invalid"
+
+    post:
+      summary: Create a new task
+      description: Creates a new task for the authenticated user
+      operationId: createTask
+      tags:
+        - Tasks
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TaskCreate'
+            example:
+              title: "Buy groceries"
+              description: "Milk, eggs, bread, and vegetables"
+      responses:
+        '201':
+          description: Task created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+              example:
+                id: 3
+                title: "Buy groceries"
+                description: "Milk, eggs, bread, and vegetables"
+                completed: false
+                user_id: 42
+                created_at: "2026-02-02T16:00:00Z"
+                updated_at: "2026-02-02T16:00:00Z"
+        '400':
+          description: Invalid input (validation error)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: "Validation error"
+                message: "Title is required and cannot be empty"
+                details:
+                  field: "title"
+                  constraint: "minLength"
+        '401':
+          description: Missing or invalid authentication token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/tasks/{task_id}:
+    get:
+      summary: Get a specific task
+      description: Returns a single task by ID. User must own the task.
+      operationId: getTask
+      tags:
+        - Tasks
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: task_id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Task ID
+          example: 1
+      responses:
+        '200':
+          description: Successfully retrieved task
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+              example:
+                id: 1
+                title: "Buy groceries"
+                description: "Milk, eggs, bread"
+                completed: false
+                user_id: 42
+                created_at: "2026-02-02T10:30:00Z"
+                updated_at: "2026-02-02T10:30:00Z"
+        '401':
+          description: Missing or invalid authentication token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Task belongs to another user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: "Access denied"
+                message: "You do not have permission to access this task"
+        '404':
+          description: Task not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: "Task not found"
+                message: "The requested task does not exist"
+
+    put:
+      summary: Update a task
+      description: Updates an existing task. User must own the task.
+      operationId: updateTask
+      tags:
+        - Tasks
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: task_id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Task ID
+          example: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TaskUpdate'
+            example:
+              title: "Buy groceries and cook dinner"
+              description: "Updated shopping list"
+              completed: true
+      responses:
+        '200':
+          description: Task updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+              example:
+                id: 1
+                title: "Buy groceries and cook dinner"
+                description: "Updated shopping list"
+                completed: true
+                user_id: 42
+                created_at: "2026-02-02T10:30:00Z"
+                updated_at: "2026-02-02T16:30:00Z"
+        '400':
+          description: Invalid input (validation error)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Missing or invalid authentication token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Task belongs to another user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Task not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    delete:
+      summary: Delete a task
+      description: Permanently deletes a task. User must own the task.
+      operationId: deleteTask
+      tags:
+        - Tasks
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: task_id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Task ID
+          example: 1
+      responses:
+        '200':
+          description: Task deleted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Task deleted successfully"
+        '401':
+          description: Missing or invalid authentication token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Task belongs to another user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Task not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'

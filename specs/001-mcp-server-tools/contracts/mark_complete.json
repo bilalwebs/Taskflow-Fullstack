@@ -1,0 +1,125 @@
+{
+  "tool_name": "mark_complete",
+  "description": "Mark a task as completed (or toggle completion status)",
+  "version": "1.0.0",
+  "input_schema": {
+    "type": "object",
+    "properties": {
+      "task_id": {
+        "type": "integer",
+        "description": "Unique task identifier",
+        "minimum": 1
+      }
+    },
+    "required": ["task_id"]
+  },
+  "output_schema": {
+    "type": "object",
+    "properties": {
+      "status": {
+        "type": "string",
+        "enum": ["success"]
+      },
+      "task": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "Task identifier"
+          },
+          "title": {
+            "type": "string",
+            "description": "Task title"
+          },
+          "completed": {
+            "type": "boolean",
+            "description": "New completion status"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Updated timestamp (ISO 8601)"
+          }
+        },
+        "required": ["id", "title", "completed", "updated_at"]
+      }
+    },
+    "required": ["status", "task"]
+  },
+  "error_schema": {
+    "type": "object",
+    "properties": {
+      "status": {
+        "type": "string",
+        "enum": ["error"]
+      },
+      "error": {
+        "type": "string",
+        "description": "User-friendly error message"
+      }
+    },
+    "required": ["status", "error"]
+  },
+  "examples": [
+    {
+      "name": "Mark task as complete",
+      "input": {
+        "task_id": 1
+      },
+      "output": {
+        "status": "success",
+        "task": {
+          "id": 1,
+          "title": "Buy groceries",
+          "completed": true,
+          "updated_at": "2026-02-03T11:00:00Z"
+        }
+      }
+    },
+    {
+      "name": "Toggle already completed task",
+      "input": {
+        "task_id": 2
+      },
+      "output": {
+        "status": "success",
+        "task": {
+          "id": 2,
+          "title": "Review PR",
+          "completed": false,
+          "updated_at": "2026-02-03T11:05:00Z"
+        }
+      }
+    },
+    {
+      "name": "Error: Task not found",
+      "input": {
+        "task_id": 999
+      },
+      "output": {
+        "status": "error",
+        "error": "Task not found"
+      }
+    },
+    {
+      "name": "Error: Unauthorized access",
+      "input": {
+        "task_id": 5
+      },
+      "output": {
+        "status": "error",
+        "error": "Task not found"
+      },
+      "note": "Returns same error as not found to prevent information disclosure"
+    }
+  ],
+  "security": {
+    "user_scoping": "Only tasks belonging to authenticated user can be modified",
+    "authorization": "Ownership validated via user_id filter in query"
+  },
+  "performance": {
+    "target_latency_ms": 100,
+    "typical_latency_ms": 50
+  },
+  "idempotency": "Calling multiple times toggles completion status each time"
+}

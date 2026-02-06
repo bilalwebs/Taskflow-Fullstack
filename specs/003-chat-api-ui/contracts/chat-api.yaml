@@ -1,0 +1,477 @@
+openapi: 3.0.3
+info:
+  title: Chat API
+  description: Stateless conversational chat interface for AI-native task management
+  version: 1.0.0
+  contact:
+    name: KIro Todo Team
+
+servers:
+  - url: http://localhost:8000
+    description: Local development server
+  - url: https://api.kirotodo.com
+    description: Production server
+
+security:
+  - BearerAuth: []
+
+paths:
+  /api/{user_id}/chat:
+    post:
+      summary: Send chat message
+      description: |
+        Send a user message to the AI assistant and receive a response.
+        The endpoint is stateless - it reconstructs conversation context from the database,
+        executes the AI agent with MCP tools, and persists the response.
+      operationId: sendChatMessage
+      tags:
+        - Chat
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          description: User ID (must match authenticated user from JWT)
+          schema:
+            type: integer
+            example: 123
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChatRequest'
+            examples:
+              newConversation:
+                summary: Start new conversation
+                value:
+                  message: "Show me my tasks for today"
+              continueConversation:
+                summary: Continue existing conversation
+                value:
+                  message: "Mark the first one as complete"
+                  conversation_id: 456
+      responses:
+        '200':
+          description: Successful response from AI assistant
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChatResponse'
+              examples:
+                withToolCalls:
+                  summary: Response with tool invocations
+                  value:
+                    conversation_id: 456
+                    assistant_message: "I've marked 'Buy groceries' as complete. You now have 2 remaining tasks."
+                    tool_calls:
+                      - tool_name: "mark_complete"
+                        arguments:
+                          task_id: 789
+                        result:
+                          status: "success"
+                          message: "Task marked as complete"
+                withoutToolCalls:
+                  summary: Response without tool invocations
+                  value:
+                    conversation_id: 456
+                    assistant_message: "Hello! I can help you manage your tasks. What would you like to do?"
+                    tool_calls: []
+        '400':
+          description: Invalid request (missing message, invalid conversation_id)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "bad_request"
+                message: "Message content is required"
+        '401':
+          description: Unauthorized (missing or invalid JWT token)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "unauthorized"
+                message: "Invalid or missing authentication token"
+        '403':
+          description: Forbidden (user_id in URL does not match JWT user_id)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "forbidden"
+                message: "You do not have permission to access this resource"
+        '404':
+          description: Conversation not found or does not belong to user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "not_found"
+                message: "Conversation not found"
+        '500':
+          description: Internal server error (agent failure, database error)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "internal_error"
+                message: "Service temporarily unavailable. Please try again."
+
+  /api/{user_id}/conversations:
+    get:
+      summary: List user conversations
+      description: Retrieve all conversations for the authenticated user, sorted by most recent activity
+      operationId: listConversations
+      tags:
+        - Conversations
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          description: User ID (must match authenticated user from JWT)
+          schema:
+            type: integer
+            example: 123
+        - name: limit
+          in: query
+          required: false
+          description: Maximum number of conversations to return
+          schema:
+            type: integer
+            default: 20
+            minimum: 1
+            maximum: 100
+        - name: offset
+          in: query
+          required: false
+          description: Number of conversations to skip (for pagination)
+          schema:
+            type: integer
+            default: 0
+            minimum: 0
+      responses:
+        '200':
+          description: List of conversations
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConversationListResponse'
+              example:
+                conversations:
+                  - id: 456
+                    created_at: "2026-02-04T10:30:00Z"
+                    updated_at: "2026-02-04T14:25:00Z"
+                    message_count: 12
+                    last_message_preview: "I've marked 'Buy groceries' as complete..."
+                  - id: 455
+                    created_at: "2026-02-03T09:15:00Z"
+                    updated_at: "2026-02-03T09:45:00Z"
+                    message_count: 6
+                    last_message_preview: "You have 3 tasks remaining."
+                total: 2
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+
+  /api/{user_id}/conversations/{conversation_id}:
+    get:
+      summary: Get conversation history
+      description: Retrieve complete message history for a specific conversation
+      operationId: getConversation
+      tags:
+        - Conversations
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: conversation_id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: limit
+          in: query
+          required: false
+          description: Maximum number of messages to return
+          schema:
+            type: integer
+            default: 100
+            minimum: 1
+            maximum: 1000
+      responses:
+        '200':
+          description: Conversation with message history
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConversationDetailResponse'
+              example:
+                id: 456
+                created_at: "2026-02-04T10:30:00Z"
+                updated_at: "2026-02-04T14:25:00Z"
+                messages:
+                  - id: 1001
+                    role: "user"
+                    content: "Show me my tasks"
+                    created_at: "2026-02-04T10:30:00Z"
+                  - id: 1002
+                    role: "assistant"
+                    content: "You have 3 tasks: Buy groceries, Call mom, Finish report"
+                    tool_calls:
+                      - tool_name: "list_tasks"
+                        arguments: {}
+                        result:
+                          status: "success"
+                          tasks: [...]
+                    created_at: "2026-02-04T10:30:05Z"
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT token obtained from Better Auth authentication
+
+  schemas:
+    ChatRequest:
+      type: object
+      required:
+        - message
+      properties:
+        message:
+          type: string
+          description: User's message to the AI assistant
+          minLength: 1
+          maxLength: 10000
+          example: "Show me my tasks for today"
+        conversation_id:
+          type: integer
+          description: Optional conversation ID to continue existing conversation
+          nullable: true
+          example: 456
+
+    ChatResponse:
+      type: object
+      required:
+        - conversation_id
+        - assistant_message
+      properties:
+        conversation_id:
+          type: integer
+          description: ID of the conversation (new or existing)
+          example: 456
+        assistant_message:
+          type: string
+          description: AI assistant's response
+          example: "I've marked 'Buy groceries' as complete. You now have 2 remaining tasks."
+        tool_calls:
+          type: array
+          description: List of MCP tools invoked during message processing
+          items:
+            $ref: '#/components/schemas/ToolCall'
+          default: []
+
+    ToolCall:
+      type: object
+      required:
+        - tool_name
+        - arguments
+        - result
+      properties:
+        tool_name:
+          type: string
+          description: Name of the MCP tool invoked
+          enum:
+            - list_tasks
+            - create_task
+            - update_task
+            - delete_task
+            - get_task
+            - mark_complete
+          example: "mark_complete"
+        arguments:
+          type: object
+          description: Input parameters passed to the tool
+          additionalProperties: true
+          example:
+            task_id: 789
+        result:
+          type: object
+          description: Output returned by the tool
+          required:
+            - status
+          properties:
+            status:
+              type: string
+              enum: [success, error]
+            message:
+              type: string
+            data:
+              type: object
+              additionalProperties: true
+          example:
+            status: "success"
+            message: "Task marked as complete"
+
+    ConversationListResponse:
+      type: object
+      required:
+        - conversations
+        - total
+      properties:
+        conversations:
+          type: array
+          items:
+            $ref: '#/components/schemas/ConversationSummary'
+        total:
+          type: integer
+          description: Total number of conversations for the user
+          example: 15
+
+    ConversationSummary:
+      type: object
+      required:
+        - id
+        - created_at
+        - updated_at
+        - message_count
+      properties:
+        id:
+          type: integer
+          example: 456
+        created_at:
+          type: string
+          format: date-time
+          example: "2026-02-04T10:30:00Z"
+        updated_at:
+          type: string
+          format: date-time
+          example: "2026-02-04T14:25:00Z"
+        message_count:
+          type: integer
+          example: 12
+        last_message_preview:
+          type: string
+          description: Preview of the last message (first 100 characters)
+          example: "I've marked 'Buy groceries' as complete..."
+
+    ConversationDetailResponse:
+      type: object
+      required:
+        - id
+        - created_at
+        - updated_at
+        - messages
+      properties:
+        id:
+          type: integer
+          example: 456
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        messages:
+          type: array
+          items:
+            $ref: '#/components/schemas/Message'
+
+    Message:
+      type: object
+      required:
+        - id
+        - role
+        - content
+        - created_at
+      properties:
+        id:
+          type: integer
+          example: 1001
+        role:
+          type: string
+          enum: [user, assistant]
+          example: "user"
+        content:
+          type: string
+          example: "Show me my tasks"
+        tool_calls:
+          type: array
+          items:
+            $ref: '#/components/schemas/ToolCall'
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+          example: "2026-02-04T10:30:00Z"
+
+    ErrorResponse:
+      type: object
+      required:
+        - error
+        - message
+      properties:
+        error:
+          type: string
+          description: Error code
+          enum:
+            - bad_request
+            - unauthorized
+            - forbidden
+            - not_found
+            - internal_error
+          example: "bad_request"
+        message:
+          type: string
+          description: Human-readable error message
+          example: "Message content is required"
+        details:
+          type: object
+          description: Additional error details (optional)
+          additionalProperties: true
+
+  responses:
+    UnauthorizedError:
+      description: Unauthorized - missing or invalid JWT token
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error: "unauthorized"
+            message: "Invalid or missing authentication token"
+
+    ForbiddenError:
+      description: Forbidden - user does not have permission
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error: "forbidden"
+            message: "You do not have permission to access this resource"
+
+    NotFoundError:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error: "not_found"
+            message: "Conversation not found"

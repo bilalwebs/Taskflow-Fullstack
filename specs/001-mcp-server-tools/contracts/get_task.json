@@ -1,0 +1,125 @@
+{
+  "tool_name": "get_task",
+  "description": "Retrieve a single task by ID",
+  "version": "1.0.0",
+  "input_schema": {
+    "type": "object",
+    "properties": {
+      "task_id": {
+        "type": "integer",
+        "description": "Unique task identifier",
+        "minimum": 1
+      }
+    },
+    "required": ["task_id"]
+  },
+  "output_schema": {
+    "type": "object",
+    "properties": {
+      "status": {
+        "type": "string",
+        "enum": ["success"]
+      },
+      "task": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "Task identifier"
+          },
+          "title": {
+            "type": "string",
+            "description": "Task title"
+          },
+          "description": {
+            "type": ["string", "null"],
+            "description": "Task description"
+          },
+          "completed": {
+            "type": "boolean",
+            "description": "Completion status"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Task creation timestamp (ISO 8601)"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Last modification timestamp (ISO 8601)"
+          }
+        },
+        "required": ["id", "title", "completed", "created_at", "updated_at"]
+      }
+    },
+    "required": ["status", "task"]
+  },
+  "error_schema": {
+    "type": "object",
+    "properties": {
+      "status": {
+        "type": "string",
+        "enum": ["error"]
+      },
+      "error": {
+        "type": "string",
+        "description": "User-friendly error message"
+      }
+    },
+    "required": ["status", "error"]
+  },
+  "examples": [
+    {
+      "name": "Get task successfully",
+      "input": {
+        "task_id": 1
+      },
+      "output": {
+        "status": "success",
+        "task": {
+          "id": 1,
+          "title": "Buy groceries",
+          "description": "Milk, eggs, bread",
+          "completed": false,
+          "created_at": "2026-02-03T10:00:00Z",
+          "updated_at": "2026-02-03T10:00:00Z"
+        }
+      }
+    },
+    {
+      "name": "Error: Task not found",
+      "input": {
+        "task_id": 999
+      },
+      "output": {
+        "status": "error",
+        "error": "Task not found"
+      }
+    },
+    {
+      "name": "Error: Unauthorized access",
+      "input": {
+        "task_id": 5
+      },
+      "output": {
+        "status": "error",
+        "error": "Task not found"
+      },
+      "note": "Returns same error as not found to prevent information disclosure"
+    }
+  ],
+  "security": {
+    "user_scoping": "Only tasks belonging to authenticated user can be retrieved",
+    "authorization": "Ownership validated via user_id filter in query"
+  },
+  "performance": {
+    "target_latency_ms": 50,
+    "typical_latency_ms": 30
+  },
+  "use_cases": [
+    "Agent needs full task details before performing operation",
+    "User asks for specific task information",
+    "Verification after create/update operations"
+  ]
+}

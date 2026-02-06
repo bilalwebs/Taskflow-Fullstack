@@ -1,0 +1,131 @@
+{
+  "tool_name": "list_tasks",
+  "description": "Retrieve all tasks for the authenticated user with their completion status",
+  "version": "1.0.0",
+  "input_schema": {
+    "type": "object",
+    "properties": {},
+    "required": []
+  },
+  "output_schema": {
+    "type": "object",
+    "properties": {
+      "tasks": {
+        "type": "array",
+        "description": "Array of task objects",
+        "items": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "integer",
+              "description": "Unique task identifier"
+            },
+            "title": {
+              "type": "string",
+              "description": "Task title",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "description": {
+              "type": ["string", "null"],
+              "description": "Task description (optional)",
+              "maxLength": 2000
+            },
+            "completed": {
+              "type": "boolean",
+              "description": "Completion status"
+            },
+            "created_at": {
+              "type": "string",
+              "format": "date-time",
+              "description": "Task creation timestamp (ISO 8601)"
+            },
+            "updated_at": {
+              "type": "string",
+              "format": "date-time",
+              "description": "Last modification timestamp (ISO 8601)"
+            }
+          },
+          "required": ["id", "title", "completed", "created_at", "updated_at"]
+        }
+      },
+      "total": {
+        "type": "integer",
+        "description": "Total number of tasks",
+        "minimum": 0
+      },
+      "completed_count": {
+        "type": "integer",
+        "description": "Number of completed tasks",
+        "minimum": 0
+      },
+      "pending_count": {
+        "type": "integer",
+        "description": "Number of incomplete tasks",
+        "minimum": 0
+      }
+    },
+    "required": ["tasks", "total", "completed_count", "pending_count"]
+  },
+  "error_schema": {
+    "type": "object",
+    "properties": {
+      "status": {
+        "type": "string",
+        "enum": ["error"]
+      },
+      "error": {
+        "type": "string",
+        "description": "User-friendly error message"
+      }
+    },
+    "required": ["status", "error"]
+  },
+  "examples": [
+    {
+      "name": "List tasks with results",
+      "input": {},
+      "output": {
+        "tasks": [
+          {
+            "id": 1,
+            "title": "Buy groceries",
+            "description": "Milk, eggs, bread",
+            "completed": false,
+            "created_at": "2026-02-03T10:00:00Z",
+            "updated_at": "2026-02-03T10:00:00Z"
+          },
+          {
+            "id": 2,
+            "title": "Review PR",
+            "description": null,
+            "completed": true,
+            "created_at": "2026-02-03T09:00:00Z",
+            "updated_at": "2026-02-03T11:00:00Z"
+          }
+        ],
+        "total": 2,
+        "completed_count": 1,
+        "pending_count": 1
+      }
+    },
+    {
+      "name": "List tasks with no results",
+      "input": {},
+      "output": {
+        "tasks": [],
+        "total": 0,
+        "completed_count": 0,
+        "pending_count": 0
+      }
+    }
+  ],
+  "security": {
+    "user_scoping": "Automatically scoped to authenticated user via MCPContext",
+    "authorization": "User_id pre-bound in context, no additional validation needed"
+  },
+  "performance": {
+    "target_latency_ms": 100,
+    "typical_latency_ms": 50
+  }
+}

@@ -1,0 +1,212 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* TaskFlow Design System */
+:root {
+  /* Brand Colors */
+  --primary-600: #4F46E5;
+  --primary-500: #6366F1;
+  --accent-sky: #0EA5E9;
+  --accent-emerald: #10B981;
+
+  /* Light Mode Colors */
+  --bg-app-light: #F8FAFC;
+  --bg-card-light: #FFFFFF;
+  --text-primary-light: #0F172A;
+  --text-secondary-light: #475569;
+  --border-light: #E2E8F0;
+
+  /* Dark Mode Colors */
+  --bg-app-dark: #0B1120;
+  --bg-card-dark: #111827;
+  --text-primary-dark: #FFFFFF;
+  --text-secondary-dark: #9CA3AF;
+  --border-dark: #1F2937;
+}
+
+@layer base {
+  body {
+    @apply antialiased transition-colors duration-200;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  }
+
+  /* Light mode (default) */
+  body {
+    @apply bg-white text-slate-900;
+  }
+
+  /* Dark mode */
+  .dark body {
+    @apply bg-[#0B1120] text-white;
+  }
+}
+
+@layer utilities {
+  /* Smooth animations */
+  .animate-slide-up {
+    animation: slideUp 0.3s ease-out;
+  }
+
+  @keyframes slideUp {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .animate-fade-in {
+    animation: fadeIn 0.2s ease-out;
+  }
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  .animate-pulse-soft {
+    animation: pulseSoft 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+
+  @keyframes pulseSoft {
+    0%, 100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.8;
+    }
+  }
+
+  /* Floating Bubble Animations */
+  .animate-float {
+    animation: float 6s ease-in-out infinite;
+  }
+
+  .animate-float-delayed {
+    animation: float 8s ease-in-out infinite;
+    animation-delay: 1s;
+  }
+
+  .animate-float-slow {
+    animation: float 10s ease-in-out infinite;
+    animation-delay: 2s;
+  }
+
+  @keyframes float {
+    0%, 100% {
+      transform: translateY(0) translateX(0) scale(1);
+    }
+    25% {
+      transform: translateY(-20px) translateX(10px) scale(1.05);
+    }
+    50% {
+      transform: translateY(-10px) translateX(-10px) scale(0.95);
+    }
+    75% {
+      transform: translateY(-25px) translateX(5px) scale(1.02);
+    }
+  }
+
+  /* Animated Background Glow Layers */
+  .animate-glow-1 {
+    animation: glow1 30s ease-in-out infinite;
+  }
+
+  .animate-glow-2 {
+    animation: glow2 25s ease-in-out infinite;
+  }
+
+  .animate-glow-3 {
+    animation: glow3 35s ease-in-out infinite;
+  }
+
+  .animate-glow-4 {
+    animation: glow4 40s ease-in-out infinite;
+  }
+
+  .animate-glow-5 {
+    animation: glow5 28s ease-in-out infinite;
+  }
+
+  @keyframes glow1 {
+    0%, 100% {
+      transform: translate(0, 0) scale(1);
+      opacity: 0.3;
+    }
+    33% {
+      transform: translate(10%, -10%) scale(1.1);
+      opacity: 0.4;
+    }
+    66% {
+      transform: translate(-5%, 5%) scale(0.9);
+      opacity: 0.25;
+    }
+  }
+
+  @keyframes glow2 {
+    0%, 100% {
+      transform: translate(0, 0) scale(1);
+      opacity: 0.3;
+    }
+    33% {
+      transform: translate(-8%, 8%) scale(1.15);
+      opacity: 0.35;
+    }
+    66% {
+      transform: translate(5%, -5%) scale(0.95);
+      opacity: 0.28;
+    }
+  }
+
+  @keyframes glow3 {
+    0%, 100% {
+      transform: translate(0, 0) scale(1);
+      opacity: 0.25;
+    }
+    33% {
+      transform: translate(8%, 10%) scale(1.05);
+      opacity: 0.3;
+    }
+    66% {
+      transform: translate(-10%, -8%) scale(1.1);
+      opacity: 0.22;
+    }
+  }
+
+  @keyframes glow4 {
+    0%, 100% {
+      transform: translate(0, 0) scale(1);
+      opacity: 0.2;
+    }
+    50% {
+      transform: translate(-15%, 15%) scale(1.2);
+      opacity: 0.25;
+    }
+  }
+
+  @keyframes glow5 {
+    0%, 100% {
+      transform: translate(0, 0) scale(1);
+      opacity: 0.2;
+    }
+    50% {
+      transform: translate(12%, -12%) scale(1.15);
+      opacity: 0.28;
+    }
+  }
+
+  /* Glassmorphism effect */
+  .glass-effect {
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+  }
+}
