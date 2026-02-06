@@ -109,7 +109,7 @@ export default function DashboardPage() {
 
       const updatedTask = await apiClient.updateTask(taskId, {
         title: task.title,
-        description: task.description,
+        description: task.description ?? undefined,
         completed,
       });
 

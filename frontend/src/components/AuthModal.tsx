@@ -24,7 +24,7 @@ export default function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps
   const [mode, setMode] = useState<"signup" | "signin">("signup");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
-  const { login } = useAuth();
+  const { setAuth } = useAuth();
 
   // Form fields
   const [name, setName] = useState("");
@@ -137,7 +137,7 @@ export default function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps
 
       // Store token and update auth context
       localStorage.setItem("token", data.access_token);
-      login(data.user, data.access_token);
+      setAuth(data.access_token, data.user);
 
       // Success - close modal
       resetForm();
