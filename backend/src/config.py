@@ -17,7 +17,7 @@ class Settings(BaseSettings):
     BETTER_AUTH_SECRET: str
 
     # CORS Configuration
-    CORS_ORIGINS: str = "http://localhost:3000"
+    CORS_ORIGINS: str = "https://bilal-taskflow-fullstack.vercel.app,http://localhost:3000"
 
     # OpenAI Configuration (supports OpenRouter)
     OPENAI_API_KEY: str
